@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { Book } from '../models/book';
 
 @Injectable({
@@ -34,8 +34,8 @@ export class ExportService {
       new Date(book.publishDate).toLocaleDateString()
     ]);
 
-    // Add table
-    (doc as any).autoTable({
+    // Add table using autoTable
+    autoTable(doc, {
       head: [['Title', 'Description', 'Pages', 'Publish Date']],
       body: tableData,
       startY: 30,

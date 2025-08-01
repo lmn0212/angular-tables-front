@@ -45,7 +45,7 @@ import { BookModalComponent } from '../book-modal/book-modal.component';
 export class BooksTableComponent implements OnInit {
   displayedColumns: string[] = ['title', 'description', 'pageCount', 'publishDate', 'actions'];
   dataSource: MatTableDataSource<Book> = new MatTableDataSource<Book>([]);
-  filteredBooks: Book[] = [];
+  originalBooks: Book[] = [];
   selectedBook: Book | null = null;
   searchTerm: string = '';
   loading: boolean = false;
@@ -62,6 +62,7 @@ export class BooksTableComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadBooks();
+    this.setupDataSource();
   }
 
   ngAfterViewInit() {
@@ -69,11 +70,27 @@ export class BooksTableComponent implements OnInit {
     this.dataSource.paginator = this.paginator;
   }
 
+  setupDataSource(): void {
+    this.dataSource.sortingDataAccessor = (item: Book, property: string) => {
+      switch (property) {
+        case 'publishDate':
+          return new Date(item.publishDate).getTime();
+        default:
+          return item[property as keyof Book];
+      }
+    };
+
+    // Set up custom filter predicate for search
+    this.dataSource.filterPredicate = (data: Book, filter: string) => {
+      return data.title.toLowerCase().includes(filter.toLowerCase());
+    };
+  }
+
   loadBooks(): void {
     this.loading = true;
     this.bookService.getBooks().subscribe({
       next: (books) => {
-        this.filteredBooks = books;
+        this.originalBooks = books; 
         this.dataSource.data = books;
         this.loading = false;
       },
@@ -86,40 +103,28 @@ export class BooksTableComponent implements OnInit {
   }
 
   applySearch(): void {
-    const searchValue = this.searchTerm.toLowerCase();
-    this.filteredBooks = this.dataSource.data.filter(book =>
-      book.title.toLowerCase().includes(searchValue)
-    );
-    this.dataSource.data = this.filteredBooks;
+    this.dataSource.filter = this.searchTerm;
   }
 
   onSortChange(sort: Sort): void {
     if (!sort.active || sort.direction === '') {
-      this.dataSource.data = this.filteredBooks;
       return;
     }
 
-    this.dataSource.data = this.filteredBooks.sort((a, b) => {
-      const isAsc = sort.direction === 'asc';
-      switch (sort.active) {
-        case 'title':
-          return this.compare(a.title, b.title, isAsc);
-        case 'publishDate':
-          return this.compare(new Date(a.publishDate), new Date(b.publishDate), isAsc);
-        case 'pageCount':
-          return this.compare(a.pageCount, b.pageCount, isAsc);
-        default:
-          return 0;
-      }
-    });
+    // Let the data source handle sorting
+    this.dataSource.sort = this.sort;
   }
 
-  compare(a: any, b: any, isAsc: boolean): number {
-    return (a < b ? -1 : 1) * (isAsc ? 1 : -1);
-  }
-
-  selectBook(book: Book): void {
-    this.selectedBook = this.selectedBook?.id === book.id ? null : book;
+  selectBook(book: Book, event?: Event): void {
+    if (event) {
+      event.stopPropagation(); // Prevent click from propagating
+    }
+  
+    if (this.selectedBook?.id === book.id) {
+      this.selectedBook = null; // Deselect the book
+    } else {
+      this.selectedBook = book; // Select the clicked book
+    }
   }
 
   openAddBookDialog(): void {
@@ -129,10 +134,21 @@ export class BooksTableComponent implements OnInit {
     });
 
     dialogRef.afterClosed().subscribe(result => {
+      // Remove focus from the triggering button
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+      
       if (result) {
         this.bookService.createBook(result).subscribe({
           next: (newBook) => {
-            this.loadBooks();
+            // Add the new book to the beginning of the original books array
+            this.originalBooks.unshift(newBook);
+            
+            // Clear search term and update data source
+            this.searchTerm = '';
+            this.dataSource.data = [...this.originalBooks];
+            
             this.snackBar.open('Book added successfully', 'Close', { duration: 3000 });
           },
           error: (error) => {
@@ -144,13 +160,22 @@ export class BooksTableComponent implements OnInit {
     });
   }
 
-  openEditBookDialog(book: Book): void {
+  openEditBookDialog(book: Book, event?: Event): void {
+    if (event) {
+      event.stopPropagation(); // Prevent the click event from propagating
+    }
+  
     const dialogRef = this.dialog.open(BookModalComponent, {
       width: '600px',
       data: { book }
     });
-
+  
     dialogRef.afterClosed().subscribe(result => {
+      // Remove focus from the triggering button
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+      
       if (result) {
         this.bookService.updateBook(book.id, result).subscribe({
           next: (updatedBook) => {
@@ -166,7 +191,11 @@ export class BooksTableComponent implements OnInit {
     });
   }
 
-  deleteBook(book: Book): void {
+  deleteBook(book: Book, event?: Event): void {
+    if (event) {
+      event.stopPropagation(); // Prevent the click event from propagating
+    }
+  
     if (confirm(`Are you sure you want to delete "${book.title}"?`)) {
       this.bookService.deleteBook(book.id).subscribe({
         next: () => {
@@ -182,12 +211,12 @@ export class BooksTableComponent implements OnInit {
   }
 
   exportToExcel(): void {
-    this.exportService.exportToExcel(this.filteredBooks, 'books-list');
+    this.exportService.exportToExcel(this.dataSource.filteredData, 'books-list');
     this.snackBar.open('Excel file exported successfully', 'Close', { duration: 3000 });
   }
 
   exportToPDF(): void {
-    this.exportService.exportToPDF(this.filteredBooks, 'books-list');
+    this.exportService.exportToPDF(this.dataSource.filteredData, 'books-list');
     this.snackBar.open('PDF file exported successfully', 'Close', { duration: 3000 });
   }
 
