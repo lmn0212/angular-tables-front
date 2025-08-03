@@ -35,7 +35,7 @@
 
   <!-- Books Table -->
   <div class="table-container" *ngIf="!loading">
-    <table mat-table [dataSource]="dataSource" matSort (matSortChange)="onSortChange($event)" class="books-table">
+    <table mat-table [dataSource]="dataSource" matSort class="books-table">
       
       <!-- Title Column -->
       <ng-container matColumnDef="title" sticky>
@@ -94,7 +94,12 @@
     </table>
 
     <!-- Pagination -->
-    <mat-paginator [pageSizeOptions]="[5, 10, 25, 50]" showFirstLastButtons></mat-paginator>
+    <mat-paginator 
+      [pageSizeOptions]="[25, 50, 100, 200]" 
+      [pageSize]="25"
+      [length]="dataSource.data.length"
+      showFirstLastButtons>
+    </mat-paginator>
   </div>
 
   <!-- No Data Message -->

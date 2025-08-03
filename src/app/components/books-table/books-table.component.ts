@@ -49,6 +49,7 @@ export class BooksTableComponent implements OnInit {
   selectedBook: Book | null = null;
   searchTerm: string = '';
   loading: boolean = false;
+  Math = Math; // Make Math available in template
 
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -61,20 +62,26 @@ export class BooksTableComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.loadBooks();
     this.setupDataSource();
+    this.loadBooks();
   }
 
   ngAfterViewInit() {
+    // Connect the data source to sort and paginator after view is initialized
     this.dataSource.sort = this.sort;
     this.dataSource.paginator = this.paginator;
   }
 
   setupDataSource(): void {
+    // Create a new data source instance
+    this.dataSource = new MatTableDataSource<Book>([]);
+    
     this.dataSource.sortingDataAccessor = (item: Book, property: string) => {
       switch (property) {
         case 'publishDate':
           return new Date(item.publishDate).getTime();
+        case 'pageCount':
+          return Number(item.pageCount);
         default:
           return item[property as keyof Book];
       }
@@ -92,6 +99,15 @@ export class BooksTableComponent implements OnInit {
       next: (books) => {
         this.originalBooks = books; 
         this.dataSource.data = books;
+        console.log('Books loaded:', books.length);
+        console.log('Data source data length:', this.dataSource.data.length);
+        
+        // Reconnect sort and paginator after data is loaded
+        setTimeout(() => {
+          this.dataSource.sort = this.sort;
+          this.dataSource.paginator = this.paginator;
+        });
+        
         this.loading = false;
       },
       error: (error) => {
@@ -104,15 +120,6 @@ export class BooksTableComponent implements OnInit {
 
   applySearch(): void {
     this.dataSource.filter = this.searchTerm;
-  }
-
-  onSortChange(sort: Sort): void {
-    if (!sort.active || sort.direction === '') {
-      return;
-    }
-
-    // Let the data source handle sorting
-    this.dataSource.sort = this.sort;
   }
 
   selectBook(book: Book, event?: Event): void {
@@ -148,6 +155,11 @@ export class BooksTableComponent implements OnInit {
             // Clear search term and update data source
             this.searchTerm = '';
             this.dataSource.data = [...this.originalBooks];
+            
+            // Reset to first page when adding new book
+            if (this.paginator) {
+              this.paginator.firstPage();
+            }
             
             this.snackBar.open('Book added successfully', 'Close', { duration: 3000 });
           },
