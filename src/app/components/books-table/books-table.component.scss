@@ -1,3 +1,5 @@
+@use '@angular/material' as mat;
+
 .books-container {
     padding: 20px;
     max-width: 1200px;
@@ -35,8 +37,31 @@
 .search-section {
     margin-bottom: 20px;
 
-    .search-field {
-        width: 100%;
+    .search-pagination-row {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+
+        .search-field {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        mat-paginator {
+            background: transparent;
+            flex-shrink: 0;
+
+            ::ng-deep .mat-mdc-paginator-container {
+                align-items: center;
+                display: flex;
+                padding-bottom: 22px;
+            }
+        }
+
+        .mat-mdc-form-field-subscript-wrapper:empty {
+            display: none;
+        }
     }
 }
 
@@ -67,11 +92,11 @@
             background-color: #f5f5f5;
             font-weight: 600;
             color: #333;
-            padding: 16px 8px;
+            padding: 16px 12px;
         }
 
         td {
-            padding: 12px 8px;
+            padding: 12px;
             border-bottom: 1px solid #eee;
             cursor: pointer;
             transition: background-color 0.2s ease;
@@ -83,12 +108,10 @@
 
         .selected-row {
             background-color: #e3f2fd !important;
-            // border-left: 4px solid #2196f3;
         }
 
         .mat-column-title {
             width: 25%;
-            font-weight: 500;
         }
 
         .mat-column-description {
@@ -97,7 +120,6 @@
 
         .mat-column-pageCount {
             width: 10%;
-            text-align: center;
         }
 
         .mat-column-publishDate {
@@ -156,6 +178,18 @@
 
         .header-actions {
             justify-content: center;
+        }
+    }
+
+    .search-section {
+        .search-pagination-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 15px;
+
+            .search-field {
+                min-width: auto;
+            }
         }
     }
 

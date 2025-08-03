@@ -78,6 +78,8 @@ export class BooksTableComponent implements OnInit {
     
     this.dataSource.sortingDataAccessor = (item: Book, property: string) => {
       switch (property) {
+        case 'title':
+          return this.getNaturalSortKey(item.title);
         case 'publishDate':
           return new Date(item.publishDate).getTime();
         case 'pageCount':
@@ -91,6 +93,19 @@ export class BooksTableComponent implements OnInit {
     this.dataSource.filterPredicate = (data: Book, filter: string) => {
       return data.title.toLowerCase().includes(filter.toLowerCase());
     };
+  }
+
+  getNaturalSortKey(title: string): string {
+    // Split the title into text and number parts
+    const match = title.match(/^(.+?)\s*(\d+)$/);
+    if (match) {
+      const textPart = match[1].trim();
+      const numberPart = parseInt(match[2], 10);
+      // Return a sortable string: text part + padded number
+      return `${textPart}${numberPart.toString().padStart(10, '0')}`;
+    }
+    // If no number found, return the original title
+    return title;
   }
 
   loadBooks(): void {
@@ -223,13 +238,28 @@ export class BooksTableComponent implements OnInit {
   }
 
   exportToExcel(): void {
-    this.exportService.exportToExcel(this.dataSource.filteredData, 'books-list');
-    this.snackBar.open('Excel file exported successfully', 'Close', { duration: 3000 });
+    // Get only the items on the current page
+    const currentPageData = this.getCurrentPageData();
+    this.exportService.exportToExcel(currentPageData, 'books-list-page');
+    this.snackBar.open(`Excel file exported successfully (${currentPageData.length} items)`, 'Close', { duration: 3000 });
   }
 
   exportToPDF(): void {
-    this.exportService.exportToPDF(this.dataSource.filteredData, 'books-list');
-    this.snackBar.open('PDF file exported successfully', 'Close', { duration: 3000 });
+    // Get only the items on the current page
+    const currentPageData = this.getCurrentPageData();
+    this.exportService.exportToPDF(currentPageData, 'books-list-page');
+    this.snackBar.open(`PDF file exported successfully (${currentPageData.length} items)`, 'Close', { duration: 3000 });
+  }
+
+  getCurrentPageData(): Book[] {
+    if (!this.paginator) {
+      return this.dataSource.filteredData;
+    }
+
+    const startIndex = this.paginator.pageIndex * this.paginator.pageSize;
+    const endIndex = startIndex + this.paginator.pageSize;
+    
+    return this.dataSource.filteredData.slice(startIndex, endIndex);
   }
 
   isSelected(book: Book): boolean {
